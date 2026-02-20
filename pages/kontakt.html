@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontakt - Mein Portfolio</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+    <header>
+        <!-- Navigation -->
+        <nav>
+            <ul> 
+                <li><a href="../index.html" target="_self" style="margin-right: 20px">Startseite </a></li>
+                <li><a href="lebenslauf.html" target="_self" style="margin-right: 20px">Zum Lebenslauf </a></li>
+                <li><a href="projekte.html" target="_self" style="margin-right: 20px">Zu meinen Projekten </a></li>
+                <li><a href="hobbys.html" target="_self" style="margin-right: 20px">Zu meinen Hobbys </a></li>
+                <li><a href="galerie.html" target="_self" style="margin-right: 20px">Zu meiner Galerie </a></li>
+                <li><a href="kontakt.html" target="_self" style="margin-right: 20px">Kontakt </a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <div class="content-row">
+            <!-- linke Spalte -->
+            <div class="portrait-wrapper">
+                <img src="../images/monkey-left.avif" alt="Hier ist mein Portrait zu sehen" class="portrait">
+            </div>
+            
+            <!-- mittlere Spalte -->
+            <div class="text">
+                <h1>Kontakt</h1>
+                <p>Sie können mich unter der folgenden Adresse erreichen:</p>
+                <p><strong>Charly<br>
+                Musterstraße 123<br>
+                12345 Musterstadt<br>
+                <p><a href="mailto:charly@affenhausen.de">E-Mail schreiben</a></p>
+                <p><a href="tel:+490123456789">Anrufen</a></p>
+                <p><a href="https://de.wikipedia.org/wiki/Pittiplatsch_und_Schnatterinchen" target="_blank">Mein persönlicher Wikipedia-Artikel</a></p>
+                </strong></p>
+
+                <!-- Kontaktformular -->
+                <h2>Schreiben Sie mir</h2>
+                    <p>Nutzen Sie das Formular, um mir eine Nachricht zu senden.</p>
+
+                    <form action="kontakt.html" method="get">
+
+                        <fieldset>
+                            <legend>Persoenliche Daten</legend>
+
+                            <label for="vorname">Vorname:</label><br>
+                            <input type="text" id="vorname" name="vorname"
+                                placeholder="..."><br><br>
+
+                            <label for="nachname">Nachname:</label><br>
+                            <input type="text" id="nachname" name="nachname"
+                                placeholder="..."><br><br>
+
+                            <label for="email">E-Mail:</label><br>
+                            <input type="email" id="email" name="email"
+                                placeholder="..."><br><br>
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>Ihre Nachricht</legend>
+
+                            <label for="betreff">Betreff:</label><br>
+                            <input type="text" id="betreff" name="betreff"
+                                placeholder="..."><br><br>
+
+                            <label for="nachricht">Nachricht:</label><br>
+                            <textarea id="nachricht" name="nachricht"
+                                    rows="6" cols="50"
+                                    placeholder="..."></textarea><br><br>
+                        </fieldset>
+
+                        <!-- Absendebutton -->
+                        <button type="submit">Absenden</button>
+                        <button type =" reset ">Formular leeren </button >
+                    </form>
+            </div>
+
+            <!-- rechte Spalte -->
+            <div class="portrait-wrapper">
+                <img src="../images/monkey-right.webp" alt="Hier ist mein Portrait zu sehen" class="portrait">
+            </div>
+        </div>
+    </main>
+</body>
+</html>
