@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PowerShell Lernportal</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+
+  body {
+    min-height: 100vh; min-height: 100dvh;
+    background: #0a0e1a;
+    font-family: 'Courier New', Consolas, monospace;
+    color: #e0e6ff;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ─────────────────────────────────── */
+  #header {
+    background: linear-gradient(135deg, #0d1b2a 0%, #1a1040 50%, #0a1628 100%);
+    border-bottom: 1px solid #1e3a5f;
+    padding: 16px 20px;
+    padding-top: calc(16px + var(--safe-top));
+    position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  #header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(0,212,255,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(168,100,255,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  #header-inner { position: relative; display: flex; align-items: center; gap: 12px; }
+  #ps-badge {
+    background: linear-gradient(135deg, #0078d4, #00d4ff);
+    border-radius: 8px; padding: 5px 12px;
+    font-size: 17px; font-weight: bold; color: #fff; letter-spacing: 1px; flex-shrink: 0;
+  }
+  #header-text { flex: 1; min-width: 0; }
+  #header h1 { font-size: 17px; font-weight: 700; color: #e8f4fd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #header p  { color: #7a9cbf; font-size: 11px; margin-top: 2px; }
+
+  /* Hamburger — hidden on desktop */
+  #menu-toggle {
+    display: none;
+    background: transparent; border: 1px solid #1e3a5f; border-radius: 8px;
+    color: #7a9cbf; padding: 7px 10px; cursor: pointer; font-size: 18px;
+    flex-shrink: 0; line-height: 1;
+  }
+
+  /* ── DESKTOP LAYOUT ──────────────────────────── */
+  #layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* Sidebar */
+  #sidebar {
+    width: 220px; background: #0d1521;
+    border-right: 1px solid #1a2e4a;
+    display: flex; flex-direction: column;
+    flex-shrink: 0; overflow: hidden;
+    transition: transform 0.28s ease;
+  }
+  #tabs { display: flex; border-bottom: 1px solid #1a2e4a; flex-shrink: 0; }
+  .tab-btn {
+    flex: 1; padding: 11px 8px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+    background: transparent; color: #4a7090;
+    border-bottom: 2px solid transparent; transition: all 0.2s;
+  }
+  .tab-btn.active { background: #0a0e1a; color: #00d4ff; border-bottom-color: #00d4ff; }
+  #sidebar-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+
+  .cat-btn {
+    width: 100%; text-align: left; padding: 12px 16px;
+    border: none; cursor: pointer; background: transparent;
+    border-left: 3px solid transparent; color: #7a9cbf;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+  }
+  .cat-btn.active { border-left-color: var(--cat-color); background: color-mix(in srgb, var(--cat-color) 10%, transparent); color: var(--cat-color); }
+  .topic-btn {
+    width: 100%; text-align: left; padding: 9px 16px 9px 36px;
+    border: none; cursor: pointer; background: transparent;
+    color: #5a7a9a; font-family: inherit; font-size: 12px; transition: all 0.2s;
+  }
+  .topic-btn.active { color: #e0e6ff; background: color-mix(in srgb, var(--cat-color) 15%, transparent); }
+  .script-btn {
+    width: 100%; text-align: left; padding: 12px 16px;
+    border: none; cursor: pointer; background: transparent;
+    border-left: 3px solid transparent; color: #7a9cbf;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+  }
+  .script-btn.active { border-left-color: #ffd166; background: rgba(255,209,102,0.1); color: #ffd166; }
+
+  /* Overlay backdrop for mobile drawer */
+  #overlay {
+    display: none;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    z-index: 99; backdrop-filter: blur(2px);
+  }
+
+  /* ── MAIN ────────────────────────────────────── */
+  #main { flex: 1; overflow-y: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
+
+  /* Welcome */
+  #welcome-box {
+    background: linear-gradient(135deg, #0d1b2a, #111827);
+    border: 1px solid #1e3a5f; border-radius: 12px;
+    padding: 20px; margin-bottom: 18px;
+  }
+  #welcome-box h2 { color: #00d4ff; font-size: 16px; margin-bottom: 8px; }
+  #welcome-box p  { color: #7a9cbf; line-height: 1.7; font-size: 12px; }
+  #terminal-demo {
+    background: #0a0e1a; border-radius: 8px; padding: 10px 14px;
+    font-size: 12px; border: 1px solid #1a3a2a; margin-top: 12px;
+    overflow-x: auto; white-space: nowrap;
+  }
+  .ps-prompt { color: #4a7090; }
+  .ps-cmd    { color: #00d4ff; }
+  .ps-arg    { color: #e0e6ff; }
+  .ps-flag   { color: #ffb347; }
+  .blink { display: inline-block; animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Category grid */
+  #cat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+  .cat-card {
+    background: color-mix(in srgb, var(--cat-color) 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cat-color) 25%, transparent);
+    border-radius: 10px; padding: 14px 12px; cursor: pointer;
+    text-align: left; transition: all 0.2s; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cat-card:hover  { border-color: var(--cat-color); background: color-mix(in srgb, var(--cat-color) 12%, transparent); }
+  .cat-card:active { background: color-mix(in srgb, var(--cat-color) 20%, transparent); }
+  .cat-card-icon  { font-size: 22px; margin-bottom: 6px; }
+  .cat-card-title { color: var(--cat-color); font-weight: 700; font-size: 12px; margin-bottom: 3px; }
+  .cat-card-count { color: #4a7090; font-size: 10px; }
+
+  /* Topic grid */
+  #topic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .topic-card {
+    background: color-mix(in srgb, var(--cat-color) 5%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cat-color) 18%, transparent);
+    border-radius: 10px; padding: 16px; cursor: pointer;
+    text-align: left; transition: all 0.2s; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .topic-card:hover  { background: color-mix(in srgb, var(--cat-color) 12%, transparent); }
+  .topic-card:active { background: color-mix(in srgb, var(--cat-color) 20%, transparent); }
+  .topic-card-title { color: var(--cat-color); font-weight: 700; font-size: 13px; margin-bottom: 5px; }
+  .topic-card-desc  { color: #4a7090; font-size: 12px; margin-bottom: 10px; line-height: 1.5; }
+  .topic-card-count { color: #7a9cbf; font-size: 11px; }
+
+  /* Section heading */
+  .section-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .section-heading h2 { font-size: 16px; }
+  .section-desc { color: #5a7a9a; font-size: 12px; margin-bottom: 16px; }
+  .back-btn {
+    background: transparent; border: none; color: #4a7090;
+    cursor: pointer; font-family: inherit; font-size: 13px;
+    margin-bottom: 14px; padding: 4px 0;
+    display: flex; align-items: center; gap: 4px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Command cards */
+  .cmd-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .cmd-card {
+    background: #080d16; border: 1px solid #1a2e4a;
+    border-radius: 8px; overflow: hidden; transition: border-color 0.2s;
+  }
+  .cmd-card:hover { border-color: color-mix(in srgb, var(--cat-color) 40%, transparent); }
+  .cmd-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-bottom: 1px solid #0f1e30; gap: 8px;
+  }
+  .cmd-name { color: #00d4ff; font-size: 12px; font-weight: 600; word-break: break-all; flex: 1; }
+  .copy-btn {
+    background: #0d1521; border: 1px solid #1a2e4a; border-radius: 5px;
+    color: #4a7090; padding: 5px 10px; cursor: pointer;
+    font-size: 11px; font-family: inherit; transition: all 0.15s;
+    white-space: nowrap; flex-shrink: 0; min-height: 32px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .copy-btn.copied { background: #1a3a2a; border-color: #2a5a3a; color: #a8e063; }
+  .cmd-body { padding: 8px 12px; }
+  .cmd-desc    { color: #7a9cbf; font-size: 12px; margin-bottom: 5px; line-height: 1.4; }
+  .cmd-example { color: #a8e063; font-size: 11px; opacity: 0.85; word-break: break-all; }
+
+  /* Tip box */
+  .tip-box {
+    background: linear-gradient(135deg, #0d1b0d, #111827);
+    border: 1px solid #1a3a2a; border-radius: 8px;
+    padding: 13px 14px; font-size: 12px; color: #a8c8a0; line-height: 1.6;
+  }
+
+  /* Script view */
+  .script-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .script-header h2 { color: #ffd166; font-size: 17px; }
+  .script-box { background: #080d16; border: 1px solid #1e3a5f; border-radius: 10px; overflow: hidden; }
+  .script-box-header {
+    background: #0d1521; padding: 9px 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #1a2e4a;
+  }
+  .script-label { color: #4a7090; font-size: 11px; }
+  .script-copy-btn {
+    background: #0d1521; border: 1px solid #1a3a5a; border-radius: 6px;
+    color: #7a9cbf; padding: 5px 12px; cursor: pointer;
+    font-size: 11px; font-family: inherit; transition: all 0.15s; min-height: 32px;
+  }
+  .script-copy-btn.copied { background: #1a3a2a; color: #a8e063; }
+  .script-code {
+    margin: 0; padding: 16px; font-size: 11px; color: #a8e063;
+    overflow-x: auto; line-height: 1.7;
+    font-family: Consolas, 'Courier New', monospace;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── HOME BUTTON ─────────────────────────────── */
+  #home-btn {
+    background: transparent; border: 1px solid #1e3a5f; border-radius: 8px;
+    color: #7a9cbf; padding: 6px 10px; cursor: pointer; font-size: 15px;
+    flex-shrink: 0; line-height: 1; transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #home-btn:hover  { border-color: #00d4ff; color: #00d4ff; }
+  #home-btn:active { background: rgba(0,212,255,0.1); }
+
+  /* ── SEARCH BAR ──────────────────────────────── */
+  #search-wrap {
+    padding: 10px 12px;
+    border-bottom: 1px solid #1a2e4a;
+    flex-shrink: 0;
+    position: relative;
+  }
+  #search-input {
+    width: 100%; background: #080d16; border: 1px solid #1a2e4a;
+    border-radius: 7px; padding: 7px 32px 7px 10px;
+    color: #e0e6ff; font-family: inherit; font-size: 12px;
+    outline: none; transition: border-color 0.2s;
+  }
+  #search-input::placeholder { color: #3a5a7a; }
+  #search-input:focus { border-color: #00d4ff55; }
+  #search-clear {
+    position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+    background: transparent; border: none; color: #3a5a7a; cursor: pointer;
+    font-size: 14px; padding: 2px; line-height: 1; display: none;
+  }
+  #search-clear.visible { display: block; }
+
+  /* ── SEARCH RESULTS ──────────────────────────── */
+  .search-result-item {
+    width: 100%; text-align: left; padding: 10px 14px;
+    border: none; cursor: pointer; background: transparent;
+    border-bottom: 1px solid #0f1a28; font-family: inherit;
+    transition: background 0.15s; display: block;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .search-result-item:hover  { background: #0d1b30; }
+  .search-result-item:active { background: #132030; }
+  .sr-cmd  { color: #00d4ff; font-size: 12px; font-weight: 600; margin-bottom: 3px; word-break: break-all; }
+  .sr-desc { color: #7a9cbf; font-size: 11px; margin-bottom: 3px; }
+  .sr-path { color: #3a5a7a; font-size: 10px; }
+  .sr-match { color: #ffd166; background: rgba(255,209,102,0.12); border-radius: 2px; padding: 0 1px; }
+  .search-empty { padding: 20px 14px; color: #3a5a7a; font-size: 12px; text-align: center; }
+  .search-count { padding: 6px 14px; color: #3a5a7a; font-size: 10px; border-bottom: 1px solid #0f1a28; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #080d16; }
+  ::-webkit-scrollbar-thumb { background: #1a3a5a; border-radius: 3px; }
+
+  /* ── MOBILE BOTTOM NAV ───────────────────────── */
+  #bottom-nav {
+    display: none;
+    background: #0d1521; border-top: 1px solid #1a2e4a;
+    flex-shrink: 0;
+    padding-bottom: var(--safe-bottom);
+  }
+  #bottom-nav-inner { display: flex; }
+  .bnav-btn {
+    flex: 1; border: none; background: transparent; cursor: pointer;
+    font-family: inherit; color: #4a7090;
+    padding: 10px 8px 8px; display: flex; flex-direction: column;
+    align-items: center; gap: 3px; transition: color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  .bnav-btn .bnav-icon { font-size: 20px; line-height: 1; }
+  #bnav-befehle.active { color: #00d4ff; }
+  #bnav-scripts.active { color: #ffd166; }
+
+  /* ── RESPONSIVE: mobile ≤ 640px ─────────────── */
+  @media (max-width: 640px) {
+    #menu-toggle { display: block; }
+
+    /* Sidebar becomes a slide-in drawer */
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 82vw; max-width: 300px;
+      z-index: 100; transform: translateX(-105%);
+      box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+    }
+    #sidebar.open { transform: translateX(0); }
+    #overlay.open { display: block; }
+
+    #bottom-nav { display: block; }
+
+    #main { padding: 14px; }
+
+    /* 2-col on small screens */
+    #cat-grid   { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    #topic-grid { grid-template-columns: 1fr; gap: 10px; }
+
+    #welcome-box { padding: 14px; }
+    #welcome-box h2 { font-size: 14px; }
+    .section-heading h2 { font-size: 14px; }
+  }
+
+  @media (max-width: 360px) {
+    #header h1 { font-size: 14px; }
+    #cat-grid  { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ── TABLET: 641–900px ────────────────────────── */
+  @media (min-width: 641px) and (max-width: 900px) {
+    #sidebar { width: 190px; }
+    #cat-grid { grid-template-columns: repeat(2,1fr); }
+    #main { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-inner">
+    <button id="menu-toggle" onclick="toggleSidebar()" aria-label="Menü öffnen">☰</button>
+    <div id="ps-badge">PS</div>
+    <div id="header-text">
+      <h1>PowerShell Lernportal</h1>
+      <p>Administrative Aufgaben meistern</p>
+    </div>
+    <button id="home-btn" onclick="goHome()" title="Zur Startseite">🏠</button>
+  </div>
+</div>
+
+<div id="layout">
+  <div id="overlay" onclick="closeSidebar()"></div>
+
+  <div id="sidebar">
+    <div id="tabs">
+      <button class="tab-btn active" id="tab-befehle" onclick="switchTab('befehle')">Befehle</button>
+      <button class="tab-btn"        id="tab-scripts" onclick="switchTab('scripts')">Scripts</button>
+    </div>
+    <div id="search-wrap">
+      <input id="search-input" type="search" placeholder="Befehl suchen…" oninput="onSearch(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button id="search-clear" onclick="clearSearch()" aria-label="Suche leeren">✕</button>
+    </div>
+    <div id="sidebar-list"></div>
+  </div>
+
+  <div id="main"></div>
+</div>
+
+<div id="bottom-nav">
+  <div id="bottom-nav-inner">
+    <button class="bnav-btn active" id="bnav-befehle" onclick="switchTab('befehle')">
+      <span class="bnav-icon">⚡</span>Befehle
+    </button>
+    <button class="bnav-btn" id="bnav-home" onclick="goHome()">
+      <span class="bnav-icon">🏠</span>Start
+    </button>
+    <button class="bnav-btn" id="bnav-scripts" onclick="switchTab('scripts')">
+      <span class="bnav-icon">📄</span>Scripts
+    </button>
+  </div>
+</div>
+
+<script>
+const categories = [
+  {
+    id: "grundlagen", icon: "⚡", title: "Grundlagen", color: "#00d4ff",
+    topics: [
+      {
+        title: "Die PowerShell-Konsole", description: "Grundlegende Navigation und Bedienung",
+        commands: [
+          { cmd: "Get-Help <Cmdlet>", desc: "Hilfe zu einem Befehl anzeigen", example: "Get-Help Get-Process" },
+          { cmd: "Get-Command", desc: "Alle verfügbaren Befehle auflisten", example: "Get-Command -Verb Get" },
+          { cmd: "Clear-Host", desc: "Konsole leeren (alias: cls)", example: "Clear-Host" },
+          { cmd: "Exit", desc: "PowerShell schließen", example: "Exit" },
+          { cmd: "Tab", desc: "Auto-Vervollständigung aktivieren", example: "Get-Pro[Tab]" },
+        ],
+        tip: "💡 PowerShell-Befehle folgen immer dem Schema Verb-Substantiv, z.B. Get-Process, Set-Item, Remove-File.",
+      },
+      {
+        title: "Variablen & Datentypen", description: "Daten speichern und verarbeiten",
+        commands: [
+          { cmd: "$name = 'Wert'", desc: "Variable erstellen und Wert zuweisen", example: "$name = 'Max Mustermann'" },
+          { cmd: "$zahl = 42", desc: "Zahl als Variable speichern", example: "$alter = 30" },
+          { cmd: "$name.GetType()", desc: "Datentyp einer Variable anzeigen", example: "$zahl.GetType()" },
+          { cmd: "$array = @(1,2,3)", desc: "Array erstellen", example: "$farben = @('Rot','Blau','Grün')" },
+          { cmd: "$hash = @{Key='Val'}", desc: "Hashtable (Dictionary) erstellen", example: "$person = @{Name='Max';Alter=30}" },
+        ],
+        tip: "💡 Variablen in PowerShell beginnen immer mit einem $-Zeichen.",
+      },
+    ],
+  },
+  {
+    id: "dateisystem", icon: "📁", title: "Dateisystem", color: "#ffb347",
+    topics: [
+      {
+        title: "Navigation & Ordner", description: "Im Dateisystem navigieren",
+        commands: [
+          { cmd: "Get-Location", desc: "Aktuellen Pfad anzeigen (alias: pwd)", example: "Get-Location" },
+          { cmd: "Set-Location C:\\Pfad", desc: "In ein Verzeichnis wechseln (alias: cd)", example: "Set-Location C:\\Users" },
+          { cmd: "Get-ChildItem", desc: "Dateien & Ordner anzeigen (alias: ls, dir)", example: "Get-ChildItem C:\\ -Recurse" },
+          { cmd: "New-Item -Type Directory", desc: "Neuen Ordner erstellen", example: "New-Item -Path 'C:\\Test' -Type Directory" },
+          { cmd: "Remove-Item -Path", desc: "Datei oder Ordner löschen", example: "Remove-Item -Path 'C:\\Test' -Recurse" },
+        ],
+        tip: "💡 Mit Get-ChildItem -Filter *.txt findet man alle TXT-Dateien in einem Verzeichnis.",
+      },
+      {
+        title: "Dateien lesen & schreiben", description: "Dateiinhalt bearbeiten",
+        commands: [
+          { cmd: "Get-Content Datei.txt", desc: "Dateiinhalt anzeigen (alias: cat)", example: "Get-Content C:\\log.txt" },
+          { cmd: "Set-Content Datei.txt", desc: "Datei überschreiben", example: "Set-Content log.txt 'Neuer Inhalt'" },
+          { cmd: "Add-Content Datei.txt", desc: "Text an Datei anhängen", example: "Add-Content log.txt 'Neue Zeile'" },
+          { cmd: "Copy-Item Quelle Ziel", desc: "Datei kopieren", example: "Copy-Item C:\\file.txt D:\\backup\\" },
+          { cmd: "Move-Item Quelle Ziel", desc: "Datei verschieben", example: "Move-Item C:\\alt.txt C:\\neu.txt" },
+        ],
+        tip: "💡 Mit Out-File kann man Ausgaben direkt in eine Datei umleiten: Get-Process | Out-File prozesse.txt",
+      },
+    ],
+  },
+  {
+    id: "prozesse", icon: "⚙️", title: "Prozesse & Dienste", color: "#ff6b6b",
+    topics: [
+      {
+        title: "Prozesse verwalten", description: "Laufende Prozesse überwachen und steuern",
+        commands: [
+          { cmd: "Get-Process", desc: "Alle laufenden Prozesse anzeigen", example: "Get-Process | Sort-Object CPU -Desc" },
+          { cmd: "Get-Process -Name chrome", desc: "Bestimmten Prozess finden", example: "Get-Process -Name 'notepad'" },
+          { cmd: "Stop-Process -Name", desc: "Prozess beenden", example: "Stop-Process -Name 'notepad' -Force" },
+          { cmd: "Start-Process", desc: "Anwendung starten", example: "Start-Process notepad.exe" },
+          { cmd: "Wait-Process -Name", desc: "Warten bis Prozess beendet ist", example: "Wait-Process -Name 'setup'" },
+        ],
+        tip: "💡 Mit Get-Process | Where-Object {$_.CPU -gt 50} findet man prozessorhungrige Anwendungen.",
+      },
+      {
+        title: "Windows-Dienste", description: "Systemdienste steuern und überwachen",
+        commands: [
+          { cmd: "Get-Service", desc: "Alle Dienste auflisten", example: "Get-Service | Where-Object Status -eq 'Running'" },
+          { cmd: "Start-Service -Name", desc: "Dienst starten", example: "Start-Service -Name 'wuauserv'" },
+          { cmd: "Stop-Service -Name", desc: "Dienst stoppen", example: "Stop-Service -Name 'Spooler'" },
+          { cmd: "Restart-Service -Name", desc: "Dienst neu starten", example: "Restart-Service -Name 'Spooler'" },
+          { cmd: "Set-Service -StartupType", desc: "Startverhalten ändern", example: "Set-Service -Name 'Spooler' -StartupType Automatic" },
+        ],
+        tip: "💡 Get-Service -Name 'Spooler' zeigt den Print Spooler Dienst – nützlich bei Druckerproblemen.",
+      },
+    ],
+  },
+  {
+    id: "netzwerk", icon: "🌐", title: "Netzwerk", color: "#a8e063",
+    topics: [
+      {
+        title: "Netzwerkdiagnose", description: "Verbindungen testen und analysieren",
+        commands: [
+          { cmd: "Test-Connection -ComputerName", desc: "Ping an Host senden", example: "Test-Connection -ComputerName google.com -Count 4" },
+          { cmd: "Get-NetIPAddress", desc: "IP-Adressen anzeigen", example: "Get-NetIPAddress -AddressFamily IPv4" },
+          { cmd: "Get-NetAdapter", desc: "Netzwerkadapter auflisten", example: "Get-NetAdapter | Select Name, Status, Speed" },
+          { cmd: "Resolve-DnsName", desc: "DNS-Auflösung durchführen", example: "Resolve-DnsName google.com" },
+          { cmd: "Test-NetConnection", desc: "Port-Verbindung testen", example: "Test-NetConnection google.com -Port 443" },
+        ],
+        tip: "💡 Test-NetConnection -ComputerName server -Port 3389 prüft ob RDP-Zugriff möglich ist.",
+      },
+      {
+        title: "Netzwerkkonfiguration", description: "Netzwerkeinstellungen verwalten",
+        commands: [
+          { cmd: "Get-NetRoute", desc: "Routing-Tabelle anzeigen", example: "Get-NetRoute -AddressFamily IPv4" },
+          { cmd: "Get-DnsClientServerAddress", desc: "DNS-Server anzeigen", example: "Get-DnsClientServerAddress" },
+          { cmd: "Clear-DnsClientCache", desc: "DNS-Cache leeren", example: "Clear-DnsClientCache" },
+          { cmd: "Get-NetFirewallRule", desc: "Firewallregeln anzeigen", example: "Get-NetFirewallRule -Enabled True" },
+          { cmd: "Invoke-WebRequest", desc: "HTTP-Anfrage senden", example: "Invoke-WebRequest https://api.example.com" },
+        ],
+        tip: "💡 Invoke-WebRequest kann auch zum Herunterladen von Dateien verwendet werden: (Invoke-WebRequest -Uri 'URL').Content",
+      },
+    ],
+  },
+  {
+    id: "benutzer", icon: "👤", title: "Benutzer & Rechte", color: "#c77dff",
+    topics: [
+      {
+        title: "Lokale Benutzer", description: "Benutzerkonten verwalten",
+        commands: [
+          { cmd: "Get-LocalUser", desc: "Lokale Benutzer auflisten", example: "Get-LocalUser | Select Name, Enabled" },
+          { cmd: "New-LocalUser -Name", desc: "Neuen Benutzer erstellen", example: "New-LocalUser -Name 'Hans' -NoPassword" },
+          { cmd: "Set-LocalUser -Name", desc: "Benutzer bearbeiten", example: "Set-LocalUser -Name 'Hans' -Description 'Testuser'" },
+          { cmd: "Remove-LocalUser -Name", desc: "Benutzer löschen", example: "Remove-LocalUser -Name 'Hans'" },
+          { cmd: "Get-LocalGroup", desc: "Lokale Gruppen anzeigen", example: "Get-LocalGroupMember -Group 'Administrators'" },
+        ],
+        tip: "💡 Add-LocalGroupMember -Group 'Administrators' -Member 'Hans' fügt einen Benutzer zur Admingruppe hinzu.",
+      },
+      {
+        title: "Berechtigungen & ACLs", description: "Zugriffsrechte prüfen und setzen",
+        commands: [
+          { cmd: "Get-Acl -Path", desc: "Zugriffsrechte anzeigen", example: "Get-Acl -Path 'C:\\Ordner'" },
+          { cmd: "Set-Acl -Path", desc: "Zugriffsrechte setzen", example: "(Get-Acl C:\\src) | Set-Acl C:\\dest" },
+          { cmd: "whoami", desc: "Aktuellen Benutzer anzeigen", example: "whoami /all" },
+          { cmd: "whoami /groups", desc: "Gruppenmitgliedschaften anzeigen", example: "whoami /groups" },
+          { cmd: "icacls Pfad", desc: "NTFS-Berechtigungen anzeigen", example: "icacls C:\\Ordner" },
+        ],
+        tip: "💡 Mit (Get-Acl 'C:\\Datei').Access kann man die einzelnen Zugriffsregeln detailliert einsehen.",
+      },
+    ],
+  },
+  {
+    id: "system", icon: "🖥️", title: "Systeminformationen", color: "#ffd166",
+    topics: [
+      {
+        title: "Hardware & OS", description: "Systeminformationen abrufen",
+        commands: [
+          { cmd: "Get-ComputerInfo", desc: "Vollständige Systeminfos", example: "Get-ComputerInfo | Select OsName, TotalPhysicalMemory" },
+          { cmd: "Get-WmiObject Win32_Processor", desc: "CPU-Informationen", example: "Get-WmiObject Win32_Processor | Select Name, NumberOfCores" },
+          { cmd: "Get-WmiObject Win32_LogicalDisk", desc: "Festplatteninformationen", example: "Get-WmiObject Win32_LogicalDisk | Select DeviceID, FreeSpace" },
+          { cmd: "Get-WmiObject Win32_PhysicalMemory", desc: "RAM-Informationen", example: "Get-WmiObject Win32_PhysicalMemory | Select Capacity" },
+          { cmd: "Get-EventLog -LogName System", desc: "Systemereignisse lesen", example: "Get-EventLog -LogName System -Newest 20" },
+        ],
+        tip: "💡 [math]::Round((Get-WmiObject Win32_LogicalDisk).FreeSpace/1GB,2) zeigt den freien Speicher in GB.",
+      },
+      {
+        title: "Registry & Umgebung", description: "Systemkonfiguration verwalten",
+        commands: [
+          { cmd: "Get-ItemProperty HKLM:\\...", desc: "Registry-Wert lesen", example: "Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion'" },
+          { cmd: "Get-ChildItem Env:", desc: "Umgebungsvariablen anzeigen", example: "Get-ChildItem Env: | Sort Name" },
+          { cmd: "$env:PATH", desc: "PATH-Variable anzeigen", example: "$env:USERNAME" },
+          { cmd: "[System.Environment]::GetEnvironmentVariable", desc: "Systemvariable lesen", example: "[System.Environment]::GetEnvironmentVariable('TEMP')" },
+          { cmd: "Get-WinSystemLocale", desc: "Systemsprache anzeigen", example: "Get-WinSystemLocale" },
+        ],
+        tip: "💡 HKLM:\\, HKCU:\\ usw. sind in PowerShell als Laufwerke eingebunden – du kannst mit cd darin navigieren!",
+      },
+    ],
+  },
+];
+
+const scripts = [
+  {
+    title: "Speicherplatz-Report", icon: "💾",
+    code: `# Festplattenauslastung aller Laufwerke anzeigen
+Get-WmiObject Win32_LogicalDisk |
+  Where-Object {$_.DriveType -eq 3} |
+  Select-Object DeviceID,
+    @{N='Gesamt (GB)';E={[math]::Round($_.Size/1GB,2)}},
+    @{N='Frei (GB)';E={[math]::Round($_.FreeSpace/1GB,2)}},
+    @{N='Belegt %';E={[math]::Round((1-$_.FreeSpace/$_.Size)*100,1)}} |
+  Format-Table -AutoSize`,
+  },
+  {
+    title: "Große Dateien finden", icon: "🔍",
+    code: `# Top 10 größte Dateien in einem Ordner finden
+$pfad = "C:\\Users"
+Get-ChildItem -Path $pfad -Recurse -ErrorAction SilentlyContinue |
+  Where-Object {!$_.PSIsContainer} |
+  Sort-Object Length -Descending |
+  Select-Object -First 10 Name, DirectoryName,
+    @{N='Größe (MB)';E={[math]::Round($_.Length/1MB,2)}} |
+  Format-Table -AutoSize`,
+  },
+  {
+    title: "Dienste-Status-Report", icon: "⚙️",
+    code: `# Alle gestoppten Dienste mit Automatik-Start anzeigen
+Get-Service |
+  Where-Object {$_.Status -eq 'Stopped' -and $_.StartType -eq 'Automatic'} |
+  Select-Object Name, DisplayName, Status |
+  Sort-Object DisplayName |
+  Format-Table -AutoSize`,
+  },
+  {
+    title: "Logdatei analysieren", icon: "📋",
+    code: `# Fehler aus Windows Ereignisprotokoll der letzten 24h
+$start = (Get-Date).AddHours(-24)
+Get-EventLog -LogName System -EntryType Error -After $start |
+  Select-Object TimeGenerated, Source, Message |
+  Sort-Object TimeGenerated -Descending |
+  Format-List`,
+  },
+];
+
+// ── State ──────────────────────────────────────
+let currentTab   = 'befehle';
+let currentCat   = null;
+let currentTopic = null;
+let searchQuery  = '';
+
+// ── Helpers ────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function isMobile() { return window.innerWidth <= 640; }
+
+// highlight matching substring
+function highlight(text, query) {
+  if (!query) return esc(text);
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return esc(text);
+  return esc(text.slice(0, idx))
+    + `<span class="sr-match">${esc(text.slice(idx, idx + query.length))}</span>`
+    + esc(text.slice(idx + query.length));
+}
+
+// ── Home ───────────────────────────────────────
+function goHome() {
+  currentCat   = null;
+  currentTopic = null;
+  clearSearch();
+  // reset tab to befehle
+  currentTab = 'befehle';
+  ['befehle','scripts'].forEach(t => {
+    document.getElementById('tab-'  + t).className = 'tab-btn'  + (t === 'befehle' ? ' active' : '');
+    document.getElementById('bnav-' + t).className = 'bnav-btn' + (t === 'befehle' ? ' active' : '');
+  });
+  renderSidebar(); renderMain();
+  if (isMobile()) closeSidebar();
+  document.getElementById('main').scrollTop = 0;
+}
+
+// ── Search ─────────────────────────────────────
+function onSearch(val) {
+  searchQuery = val.trim();
+  const clearBtn = document.getElementById('search-clear');
+  clearBtn.classList.toggle('visible', searchQuery.length > 0);
+  renderSidebar();
+}
+
+function clearSearch() {
+  searchQuery = '';
+  const inp = document.getElementById('search-input');
+  if (inp) inp.value = '';
+  document.getElementById('search-clear').classList.remove('visible');
+  renderSidebar();
+}
+
+function jumpToResult(catId, topicTitle) {
+  clearSearch();
+  currentTab   = 'befehle';
+  currentCat   = catId;
+  currentTopic = topicTitle;
+  ['befehle','scripts'].forEach(t => {
+    document.getElementById('tab-'  + t).className = 'tab-btn'  + (t === 'befehle' ? ' active' : '');
+    document.getElementById('bnav-' + t).className = 'bnav-btn' + (t === 'befehle' ? ' active' : '');
+  });
+  renderSidebar(); renderMain();
+  if (isMobile()) closeSidebar();
+  document.getElementById('main').scrollTop = 0;
+}
+
+// ── Sidebar drawer ─────────────────────────────
+function toggleSidebar() {
+  const open = document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open', open);
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+// ── Navigation ─────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab; currentCat = null; currentTopic = null;
+  clearSearch();
+  ['befehle','scripts'].forEach(t => {
+    document.getElementById('tab-'  + t).className = 'tab-btn'   + (tab === t ? ' active' : '');
+    document.getElementById('bnav-' + t).className = 'bnav-btn'  + (tab === t ? ' active' : '');
+  });
+  renderSidebar(); renderMain();
+  if (isMobile()) closeSidebar();
+}
+
+function selectCat(id) {
+  currentCat = id; currentTopic = null;
+  clearSearch();
+  renderSidebar(); renderMain();
+  if (isMobile()) closeSidebar();
+}
+
+function selectTopic(title) {
+  currentTopic = title;
+  renderSidebar(); renderMain();
+  if (isMobile()) { closeSidebar(); document.getElementById('main').scrollTop = 0; }
+}
+
+function selectScript(idx) {
+  currentCat = 'script-' + idx;
+  renderSidebar(); renderMain();
+  if (isMobile()) closeSidebar();
+}
+
+function goBack() {
+  currentTopic = null;
+  renderSidebar(); renderMain();
+  document.getElementById('main').scrollTop = 0;
+}
+
+// ── Copy to clipboard ──────────────────────────
+function copyText(text, btnId) {
+  navigator.clipboard.writeText(text).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  const orig = btn.textContent;
+  btn.textContent = '✓ Kopiert!';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+}
+
+// ── Render sidebar ─────────────────────────────
+function renderSidebar() {
+  const el = document.getElementById('sidebar-list');
+
+  // Search mode: show matching commands across all categories
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    let results = [];
+    categories.forEach(cat => {
+      cat.topics.forEach(topic => {
+        topic.commands.forEach(cmd => {
+          if (
+            cmd.cmd.toLowerCase().includes(q) ||
+            cmd.desc.toLowerCase().includes(q) ||
+            cmd.example.toLowerCase().includes(q) ||
+            topic.title.toLowerCase().includes(q) ||
+            cat.title.toLowerCase().includes(q)
+          ) {
+            results.push({ cat, topic, cmd });
+          }
+        });
+      });
+    });
+
+    if (results.length === 0) {
+      el.innerHTML = `<div class="search-empty">Keine Ergebnisse für<br><strong style="color:#e0e6ff">${esc(searchQuery)}</strong></div>`;
+      return;
+    }
+
+    const countHtml = `<div class="search-count">${results.length} Ergebnis${results.length !== 1 ? 'se' : ''}</div>`;
+    const items = results.map(({ cat, topic, cmd }) => `
+      <button class="search-result-item" onclick="jumpToResult('${cat.id}','${esc(topic.title)}')">
+        <div class="sr-cmd">${highlight(cmd.cmd, searchQuery)}</div>
+        <div class="sr-desc">${highlight(cmd.desc, searchQuery)}</div>
+        <div class="sr-path" style="color:${cat.color}88">${cat.icon} ${esc(cat.title)} › ${esc(topic.title)}</div>
+      </button>`).join('');
+    el.innerHTML = countHtml + items;
+    return;
+  }
+
+  // Normal mode
+  if (currentTab === 'befehle') {
+    let html = '';
+    categories.forEach(cat => {
+      const active = currentCat === cat.id;
+      html += `<button class="cat-btn${active?' active':''}" style="--cat-color:${cat.color}" onclick="selectCat('${cat.id}')">${cat.icon} ${esc(cat.title)}</button>`;
+      if (active) {
+        cat.topics.forEach(t => {
+          const ta = currentTopic === t.title;
+          html += `<button class="topic-btn${ta?' active':''}" style="--cat-color:${cat.color}" onclick="selectTopic('${esc(t.title)}')">&rsaquo; ${esc(t.title)}</button>`;
+        });
+      }
+    });
+    el.innerHTML = html;
+  } else {
+    el.innerHTML = scripts.map((s, i) => {
+      const active = currentCat === 'script-' + i;
+      return `<button class="script-btn${active?' active':''}" onclick="selectScript(${i})">${s.icon} ${esc(s.title)}</button>`;
+    }).join('');
+  }
+}
+
+// ── Render main ────────────────────────────────
+function renderMain() {
+  const el = document.getElementById('main');
+
+  // Welcome
+  if (!currentCat) {
+    el.innerHTML = `
+      <div id="welcome-box">
+        <h2>Willkommen im PowerShell Lernportal</h2>
+        <p>Wähle eine Kategorie aus, um Befehle zu entdecken. Tippe auf einen Befehl, um ihn zu kopieren.
+        Unter <strong style="color:#ffd166">Scripts</strong> findest du fertige Praxis-Beispiele.</p>
+        <div id="terminal-demo">
+          <span class="ps-prompt">PS C:\&gt; </span><span class="ps-cmd">Get-Help</span><span class="ps-arg"> * </span><span class="ps-flag">-Category</span><span class="ps-arg"> All</span><span class="blink">▌</span>
+        </div>
+      </div>
+      <div id="cat-grid">${categories.map(cat =>
+        `<button class="cat-card" style="--cat-color:${cat.color}" onclick="selectCat('${cat.id}')">
+          <div class="cat-card-icon">${cat.icon}</div>
+          <div class="cat-card-title">${esc(cat.title)}</div>
+          <div class="cat-card-count">${cat.topics.length} Themen</div>
+        </button>`
+      ).join('')}</div>`;
+    return;
+  }
+
+  // Script
+  if (currentTab === 'scripts' && currentCat.startsWith('script-')) {
+    const idx = parseInt(currentCat.split('-')[1]);
+    const s = scripts[idx];
+    const btnId = 'script-copy-btn';
+    el.innerHTML = `
+      <div class="script-header">
+        <span style="font-size:26px">${s.icon}</span>
+        <h2>${esc(s.title)}</h2>
+      </div>
+      <div class="script-box">
+        <div class="script-box-header">
+          <span class="script-label">PowerShell Script</span>
+          <button class="script-copy-btn" id="${btnId}" onclick="copyText(scripts[${idx}].code,'${btnId}')">Kopieren</button>
+        </div>
+        <pre class="script-code">${esc(s.code)}</pre>
+      </div>`;
+    return;
+  }
+
+  // Category
+  const cat = categories.find(c => c.id === currentCat);
+  if (!cat) return;
+
+  if (!currentTopic) {
+    el.innerHTML = `
+      <div class="section-heading">
+        <span style="font-size:24px">${cat.icon}</span>
+        <h2 style="color:${cat.color}">${esc(cat.title)}</h2>
+      </div>
+      <div id="topic-grid">${cat.topics.map(t =>
+        `<button class="topic-card" style="--cat-color:${cat.color}" onclick="selectTopic('${esc(t.title)}')">
+          <div class="topic-card-title">${esc(t.title)}</div>
+          <div class="topic-card-desc">${esc(t.description)}</div>
+          <div class="topic-card-count">${t.commands.length} Befehle &rarr;</div>
+        </button>`
+      ).join('')}</div>`;
+    return;
+  }
+
+  // Commands
+  const topic = cat.topics.find(t => t.title === currentTopic);
+  if (!topic) return;
+
+  el.innerHTML = `
+    <button class="back-btn" onclick="goBack()">&larr; ${esc(cat.title)}</button>
+    <div class="section-heading">
+      <h2 style="color:${cat.color}">${esc(topic.title)}</h2>
+    </div>
+    <p class="section-desc">${esc(topic.description)}</p>
+    <div class="cmd-list">${topic.commands.map((c, i) => {
+      const btnId = `copy-btn-${i}`;
+      return `
+        <div class="cmd-card" style="--cat-color:${cat.color}">
+          <div class="cmd-header">
+            <code class="cmd-name">${esc(c.cmd)}</code>
+            <button class="copy-btn" id="${btnId}" onclick="copyText('${esc(c.example).replace(/'/g,"\\'")}','${btnId}')">Kopieren</button>
+          </div>
+          <div class="cmd-body">
+            <div class="cmd-desc">${esc(c.desc)}</div>
+            <code class="cmd-example">${esc(c.example)}</code>
+          </div>
+        </div>`;
+    }).join('')}</div>
+    <div class="tip-box">${esc(topic.tip)}</div>`;
+}
+
+// Init
+renderSidebar();
+renderMain();
+</script>
+</body>
+</html>
