@@ -2,45 +2,59 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PowerShell Lernportal</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+
   body {
-    min-height: 100vh;
+    min-height: 100vh; min-height: 100dvh;
     background: #0a0e1a;
     font-family: 'Courier New', Consolas, monospace;
     color: #e0e6ff;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
+    display: flex; flex-direction: column;
     overflow: hidden;
   }
-  /* Header */
+
+  /* ── HEADER ─────────────────────────────────── */
   #header {
     background: linear-gradient(135deg, #0d1b2a 0%, #1a1040 50%, #0a1628 100%);
     border-bottom: 1px solid #1e3a5f;
-    padding: 20px 32px;
-    position: relative;
-    overflow: hidden;
-    flex-shrink: 0;
+    padding: 16px 20px;
+    padding-top: calc(16px + var(--safe-top));
+    position: relative; overflow: hidden; flex-shrink: 0;
   }
   #header::before {
     content: '';
-    position: absolute; top:0; left:0; right:0; bottom:0;
+    position: absolute; inset: 0;
     background: radial-gradient(ellipse at 20% 50%, rgba(0,212,255,0.06) 0%, transparent 60%),
                 radial-gradient(ellipse at 80% 20%, rgba(168,100,255,0.06) 0%, transparent 60%);
+    pointer-events: none;
   }
-  #header-inner { position: relative; display: flex; align-items: center; gap: 16px; }
+  #header-inner { position: relative; display: flex; align-items: center; gap: 12px; }
   #ps-badge {
     background: linear-gradient(135deg, #0078d4, #00d4ff);
-    border-radius: 10px; padding: 6px 14px;
-    font-size: 20px; font-weight: bold; color: #fff; letter-spacing: 1px;
+    border-radius: 8px; padding: 5px 12px;
+    font-size: 17px; font-weight: bold; color: #fff; letter-spacing: 1px; flex-shrink: 0;
   }
-  #header h1 { font-size: 22px; font-weight: 700; color: #e8f4fd; letter-spacing: 0.5px; }
-  #header p { color: #7a9cbf; font-size: 12px; letter-spacing: 0.3px; margin-top: 4px; }
+  #header-text { flex: 1; min-width: 0; }
+  #header h1 { font-size: 17px; font-weight: 700; color: #e8f4fd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #header p  { color: #7a9cbf; font-size: 11px; margin-top: 2px; }
 
-  /* Layout */
+  /* Hamburger — hidden on desktop */
+  #menu-toggle {
+    display: none;
+    background: transparent; border: 1px solid #1e3a5f; border-radius: 8px;
+    color: #7a9cbf; padding: 7px 10px; cursor: pointer; font-size: 18px;
+    flex-shrink: 0; line-height: 1;
+  }
+
+  /* ── DESKTOP LAYOUT ──────────────────────────── */
   #layout { display: flex; flex: 1; overflow: hidden; }
 
   /* Sidebar */
@@ -49,6 +63,7 @@
     border-right: 1px solid #1a2e4a;
     display: flex; flex-direction: column;
     flex-shrink: 0; overflow: hidden;
+    transition: transform 0.28s ease;
   }
   #tabs { display: flex; border-bottom: 1px solid #1a2e4a; flex-shrink: 0; }
   .tab-btn {
@@ -58,9 +73,10 @@
     border-bottom: 2px solid transparent; transition: all 0.2s;
   }
   .tab-btn.active { background: #0a0e1a; color: #00d4ff; border-bottom-color: #00d4ff; }
-  #sidebar-list { overflow-y: auto; flex: 1; }
+  #sidebar-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+
   .cat-btn {
-    width: 100%; text-align: left; padding: 11px 16px;
+    width: 100%; text-align: left; padding: 12px 16px;
     border: none; cursor: pointer; background: transparent;
     border-left: 3px solid transparent; color: #7a9cbf;
     font-family: inherit; font-size: 13px; font-weight: 600;
@@ -68,13 +84,13 @@
   }
   .cat-btn.active { border-left-color: var(--cat-color); background: color-mix(in srgb, var(--cat-color) 10%, transparent); color: var(--cat-color); }
   .topic-btn {
-    width: 100%; text-align: left; padding: 7px 16px 7px 36px;
+    width: 100%; text-align: left; padding: 9px 16px 9px 36px;
     border: none; cursor: pointer; background: transparent;
     color: #5a7a9a; font-family: inherit; font-size: 12px; transition: all 0.2s;
   }
   .topic-btn.active { color: #e0e6ff; background: color-mix(in srgb, var(--cat-color) 15%, transparent); }
   .script-btn {
-    width: 100%; text-align: left; padding: 11px 16px;
+    width: 100%; text-align: left; padding: 12px 16px;
     border: none; cursor: pointer; background: transparent;
     border-left: 3px solid transparent; color: #7a9cbf;
     font-family: inherit; font-size: 12px; font-weight: 600;
@@ -82,67 +98,80 @@
   }
   .script-btn.active { border-left-color: #ffd166; background: rgba(255,209,102,0.1); color: #ffd166; }
 
-  /* Main */
-  #main { flex: 1; overflow-y: auto; padding: 28px; }
+  /* Overlay backdrop for mobile drawer */
+  #overlay {
+    display: none;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    z-index: 99; backdrop-filter: blur(2px);
+  }
+
+  /* ── MAIN ────────────────────────────────────── */
+  #main { flex: 1; overflow-y: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
 
   /* Welcome */
   #welcome-box {
     background: linear-gradient(135deg, #0d1b2a, #111827);
     border: 1px solid #1e3a5f; border-radius: 12px;
-    padding: 24px 28px; margin-bottom: 22px;
+    padding: 20px; margin-bottom: 18px;
   }
-  #welcome-box h2 { color: #00d4ff; font-size: 18px; margin-bottom: 10px; }
-  #welcome-box p { color: #7a9cbf; line-height: 1.7; font-size: 13px; }
+  #welcome-box h2 { color: #00d4ff; font-size: 16px; margin-bottom: 8px; }
+  #welcome-box p  { color: #7a9cbf; line-height: 1.7; font-size: 12px; }
   #terminal-demo {
-    background: #0a0e1a; border-radius: 8px; padding: 11px 16px;
-    font-size: 13px; border: 1px solid #1a3a2a; margin-top: 14px;
+    background: #0a0e1a; border-radius: 8px; padding: 10px 14px;
+    font-size: 12px; border: 1px solid #1a3a2a; margin-top: 12px;
+    overflow-x: auto; white-space: nowrap;
   }
   .ps-prompt { color: #4a7090; }
-  .ps-cmd { color: #00d4ff; }
-  .ps-arg { color: #e0e6ff; }
-  .ps-flag { color: #ffb347; }
+  .ps-cmd    { color: #00d4ff; }
+  .ps-arg    { color: #e0e6ff; }
+  .ps-flag   { color: #ffb347; }
   .blink { display: inline-block; animation: blink 1s step-end infinite; }
   @keyframes blink { 50% { opacity: 0; } }
 
   /* Category grid */
-  #cat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+  #cat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
   .cat-card {
     background: color-mix(in srgb, var(--cat-color) 6%, transparent);
     border: 1px solid color-mix(in srgb, var(--cat-color) 25%, transparent);
-    border-radius: 10px; padding: 18px; cursor: pointer;
+    border-radius: 10px; padding: 14px 12px; cursor: pointer;
     text-align: left; transition: all 0.2s; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
   }
-  .cat-card:hover { border-color: var(--cat-color); background: color-mix(in srgb, var(--cat-color) 12%, transparent); }
-  .cat-card-icon { font-size: 26px; margin-bottom: 8px; }
-  .cat-card-title { color: var(--cat-color); font-weight: 700; font-size: 13px; margin-bottom: 4px; }
-  .cat-card-count { color: #4a7090; font-size: 11px; }
+  .cat-card:hover  { border-color: var(--cat-color); background: color-mix(in srgb, var(--cat-color) 12%, transparent); }
+  .cat-card:active { background: color-mix(in srgb, var(--cat-color) 20%, transparent); }
+  .cat-card-icon  { font-size: 22px; margin-bottom: 6px; }
+  .cat-card-title { color: var(--cat-color); font-weight: 700; font-size: 12px; margin-bottom: 3px; }
+  .cat-card-count { color: #4a7090; font-size: 10px; }
 
   /* Topic grid */
-  #topic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  #topic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .topic-card {
     background: color-mix(in srgb, var(--cat-color) 5%, transparent);
     border: 1px solid color-mix(in srgb, var(--cat-color) 18%, transparent);
-    border-radius: 10px; padding: 18px; cursor: pointer;
+    border-radius: 10px; padding: 16px; cursor: pointer;
     text-align: left; transition: all 0.2s; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
   }
-  .topic-card:hover { background: color-mix(in srgb, var(--cat-color) 12%, transparent); }
+  .topic-card:hover  { background: color-mix(in srgb, var(--cat-color) 12%, transparent); }
+  .topic-card:active { background: color-mix(in srgb, var(--cat-color) 20%, transparent); }
   .topic-card-title { color: var(--cat-color); font-weight: 700; font-size: 13px; margin-bottom: 5px; }
-  .topic-card-desc { color: #4a7090; font-size: 12px; margin-bottom: 10px; }
+  .topic-card-desc  { color: #4a7090; font-size: 12px; margin-bottom: 10px; line-height: 1.5; }
   .topic-card-count { color: #7a9cbf; font-size: 11px; }
 
   /* Section heading */
-  .section-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-  .section-heading h2 { font-size: 18px; }
-  .section-desc { color: #5a7a9a; font-size: 13px; margin-bottom: 18px; }
+  .section-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .section-heading h2 { font-size: 16px; }
+  .section-desc { color: #5a7a9a; font-size: 12px; margin-bottom: 16px; }
   .back-btn {
     background: transparent; border: none; color: #4a7090;
-    cursor: pointer; font-family: inherit; font-size: 12px;
-    margin-bottom: 14px; padding: 0;
+    cursor: pointer; font-family: inherit; font-size: 13px;
+    margin-bottom: 14px; padding: 4px 0;
+    display: flex; align-items: center; gap: 4px;
+    -webkit-tap-highlight-color: transparent;
   }
-  .back-btn:hover { color: #7a9cbf; }
 
   /* Command cards */
-  .cmd-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+  .cmd-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
   .cmd-card {
     background: #080d16; border: 1px solid #1a2e4a;
     border-radius: 8px; overflow: hidden; transition: border-color 0.2s;
@@ -150,84 +179,152 @@
   .cmd-card:hover { border-color: color-mix(in srgb, var(--cat-color) 40%, transparent); }
   .cmd-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 9px 14px; border-bottom: 1px solid #0f1e30;
+    padding: 10px 12px; border-bottom: 1px solid #0f1e30; gap: 8px;
   }
-  .cmd-name { color: #00d4ff; font-size: 13px; font-weight: 600; }
+  .cmd-name { color: #00d4ff; font-size: 12px; font-weight: 600; word-break: break-all; flex: 1; }
   .copy-btn {
     background: #0d1521; border: 1px solid #1a2e4a; border-radius: 5px;
-    color: #4a7090; padding: 3px 10px; cursor: pointer;
+    color: #4a7090; padding: 5px 10px; cursor: pointer;
     font-size: 11px; font-family: inherit; transition: all 0.15s;
-    white-space: nowrap;
+    white-space: nowrap; flex-shrink: 0; min-height: 32px;
+    -webkit-tap-highlight-color: transparent;
   }
-  .copy-btn:hover { border-color: #2a4a6a; color: #7a9cbf; }
   .copy-btn.copied { background: #1a3a2a; border-color: #2a5a3a; color: #a8e063; }
-  .cmd-body { padding: 8px 14px; }
-  .cmd-desc { color: #7a9cbf; font-size: 12px; margin-bottom: 5px; }
-  .cmd-example { color: #a8e063; font-size: 11px; opacity: 0.85; }
+  .cmd-body { padding: 8px 12px; }
+  .cmd-desc    { color: #7a9cbf; font-size: 12px; margin-bottom: 5px; line-height: 1.4; }
+  .cmd-example { color: #a8e063; font-size: 11px; opacity: 0.85; word-break: break-all; }
 
   /* Tip box */
   .tip-box {
     background: linear-gradient(135deg, #0d1b0d, #111827);
     border: 1px solid #1a3a2a; border-radius: 8px;
-    padding: 13px 16px; font-size: 13px; color: #a8c8a0; line-height: 1.6;
+    padding: 13px 14px; font-size: 12px; color: #a8c8a0; line-height: 1.6;
   }
 
   /* Script view */
-  .script-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-  .script-header h2 { color: #ffd166; font-size: 18px; }
-  .script-box {
-    background: #080d16; border: 1px solid #1e3a5f;
-    border-radius: 10px; overflow: hidden;
-  }
+  .script-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .script-header h2 { color: #ffd166; font-size: 17px; }
+  .script-box { background: #080d16; border: 1px solid #1e3a5f; border-radius: 10px; overflow: hidden; }
   .script-box-header {
-    background: #0d1521; padding: 9px 16px;
+    background: #0d1521; padding: 9px 14px;
     display: flex; justify-content: space-between; align-items: center;
     border-bottom: 1px solid #1a2e4a;
   }
-  .script-label { color: #4a7090; font-size: 12px; }
+  .script-label { color: #4a7090; font-size: 11px; }
   .script-copy-btn {
     background: #0d1521; border: 1px solid #1a3a5a; border-radius: 6px;
-    color: #7a9cbf; padding: 4px 12px; cursor: pointer;
-    font-size: 11px; font-family: inherit; transition: all 0.15s;
+    color: #7a9cbf; padding: 5px 12px; cursor: pointer;
+    font-size: 11px; font-family: inherit; transition: all 0.15s; min-height: 32px;
   }
-  .script-copy-btn:hover { color: #a8e063; }
   .script-copy-btn.copied { background: #1a3a2a; color: #a8e063; }
   .script-code {
-    margin: 0; padding: 20px; font-size: 12px; color: #a8e063;
+    margin: 0; padding: 16px; font-size: 11px; color: #a8e063;
     overflow-x: auto; line-height: 1.7;
     font-family: Consolas, 'Courier New', monospace;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: #080d16; }
   ::-webkit-scrollbar-thumb { background: #1a3a5a; border-radius: 3px; }
 
-  /* Hidden */
-  .hidden { display: none !important; }
+  /* ── MOBILE BOTTOM NAV ───────────────────────── */
+  #bottom-nav {
+    display: none;
+    background: #0d1521; border-top: 1px solid #1a2e4a;
+    flex-shrink: 0;
+    padding-bottom: var(--safe-bottom);
+  }
+  #bottom-nav-inner { display: flex; }
+  .bnav-btn {
+    flex: 1; border: none; background: transparent; cursor: pointer;
+    font-family: inherit; color: #4a7090;
+    padding: 10px 8px 8px; display: flex; flex-direction: column;
+    align-items: center; gap: 3px; transition: color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
+  }
+  .bnav-btn .bnav-icon { font-size: 20px; line-height: 1; }
+  #bnav-befehle.active { color: #00d4ff; }
+  #bnav-scripts.active { color: #ffd166; }
+
+  /* ── RESPONSIVE: mobile ≤ 640px ─────────────── */
+  @media (max-width: 640px) {
+    #menu-toggle { display: block; }
+
+    /* Sidebar becomes a slide-in drawer */
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 82vw; max-width: 300px;
+      z-index: 100; transform: translateX(-105%);
+      box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+    }
+    #sidebar.open { transform: translateX(0); }
+    #overlay.open { display: block; }
+
+    #bottom-nav { display: block; }
+
+    #main { padding: 14px; }
+
+    /* 2-col on small screens */
+    #cat-grid   { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    #topic-grid { grid-template-columns: 1fr; gap: 10px; }
+
+    #welcome-box { padding: 14px; }
+    #welcome-box h2 { font-size: 14px; }
+    .section-heading h2 { font-size: 14px; }
+  }
+
+  @media (max-width: 360px) {
+    #header h1 { font-size: 14px; }
+    #cat-grid  { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ── TABLET: 641–900px ────────────────────────── */
+  @media (min-width: 641px) and (max-width: 900px) {
+    #sidebar { width: 190px; }
+    #cat-grid { grid-template-columns: repeat(2,1fr); }
+    #main { padding: 18px; }
+  }
 </style>
 </head>
 <body>
 
 <div id="header">
   <div id="header-inner">
+    <button id="menu-toggle" onclick="toggleSidebar()" aria-label="Menü öffnen">☰</button>
     <div id="ps-badge">PS</div>
-    <div>
+    <div id="header-text">
       <h1>PowerShell Lernportal</h1>
-      <p>Administrative Aufgaben meistern · Schritt für Schritt</p>
+      <p>Administrative Aufgaben meistern</p>
     </div>
   </div>
 </div>
 
 <div id="layout">
+  <div id="overlay" onclick="closeSidebar()"></div>
+
   <div id="sidebar">
     <div id="tabs">
       <button class="tab-btn active" id="tab-befehle" onclick="switchTab('befehle')">Befehle</button>
-      <button class="tab-btn" id="tab-scripts" onclick="switchTab('scripts')">Scripts</button>
+      <button class="tab-btn"        id="tab-scripts" onclick="switchTab('scripts')">Scripts</button>
     </div>
     <div id="sidebar-list"></div>
   </div>
+
   <div id="main"></div>
+</div>
+
+<div id="bottom-nav">
+  <div id="bottom-nav-inner">
+    <button class="bnav-btn active" id="bnav-befehle" onclick="switchTab('befehle')">
+      <span class="bnav-icon">⚡</span>Befehle
+    </button>
+    <button class="bnav-btn" id="bnav-scripts" onclick="switchTab('scripts')">
+      <span class="bnav-icon">📄</span>Scripts
+    </button>
+  </div>
 </div>
 
 <script>
@@ -439,50 +536,65 @@ Get-EventLog -LogName System -EntryType Error -After $start |
   },
 ];
 
-// State
-let currentTab = 'befehle';
-let currentCat = null;
+// ── State ──────────────────────────────────────
+let currentTab   = 'befehle';
+let currentCat   = null;
 let currentTopic = null;
 
+// ── Helpers ────────────────────────────────────
 function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function isMobile() { return window.innerWidth <= 640; }
+
+// ── Sidebar drawer ─────────────────────────────
+function toggleSidebar() {
+  const open = document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open', open);
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
 }
 
+// ── Navigation ─────────────────────────────────
 function switchTab(tab) {
-  currentTab = tab;
-  currentCat = null;
-  currentTopic = null;
-  document.getElementById('tab-befehle').className = 'tab-btn' + (tab === 'befehle' ? ' active' : '');
-  document.getElementById('tab-scripts').className = 'tab-btn' + (tab === 'scripts' ? ' active' : '');
-  renderSidebar();
-  renderMain();
+  currentTab = tab; currentCat = null; currentTopic = null;
+  ['befehle','scripts'].forEach(t => {
+    document.getElementById('tab-'  + t).className = 'tab-btn'   + (tab === t ? ' active' : '');
+    document.getElementById('bnav-' + t).className = 'bnav-btn'  + (tab === t ? ' active' : '');
+  });
+  renderSidebar(); renderMain();
+  if (isMobile()) closeSidebar();
 }
 
 function selectCat(id) {
-  currentCat = id;
-  currentTopic = null;
-  renderSidebar();
-  renderMain();
+  currentCat = id; currentTopic = null;
+  renderSidebar(); renderMain();
+  if (isMobile()) closeSidebar();
 }
 
 function selectTopic(title) {
   currentTopic = title;
-  renderSidebar();
-  renderMain();
+  renderSidebar(); renderMain();
+  if (isMobile()) { closeSidebar(); document.getElementById('main').scrollTop = 0; }
 }
 
 function selectScript(idx) {
   currentCat = 'script-' + idx;
-  renderSidebar();
-  renderMain();
+  renderSidebar(); renderMain();
+  if (isMobile()) closeSidebar();
 }
 
 function goBack() {
   currentTopic = null;
-  renderSidebar();
-  renderMain();
+  renderSidebar(); renderMain();
+  document.getElementById('main').scrollTop = 0;
 }
 
+// ── Copy to clipboard ──────────────────────────
 function copyText(text, btnId) {
   navigator.clipboard.writeText(text).catch(() => {
     const ta = document.createElement('textarea');
@@ -498,65 +610,63 @@ function copyText(text, btnId) {
   setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
 }
 
+// ── Render sidebar ─────────────────────────────
 function renderSidebar() {
   const el = document.getElementById('sidebar-list');
   if (currentTab === 'befehle') {
     let html = '';
     categories.forEach(cat => {
-      const isActive = currentCat === cat.id;
-      html += `<button class="cat-btn${isActive ? ' active' : ''}" style="--cat-color:${cat.color}" onclick="selectCat('${cat.id}')">${cat.icon} ${esc(cat.title)}</button>`;
-      if (isActive) {
+      const active = currentCat === cat.id;
+      html += `<button class="cat-btn${active?' active':''}" style="--cat-color:${cat.color}" onclick="selectCat('${cat.id}')">${cat.icon} ${esc(cat.title)}</button>`;
+      if (active) {
         cat.topics.forEach(t => {
           const ta = currentTopic === t.title;
-          html += `<button class="topic-btn${ta ? ' active' : ''}" style="--cat-color:${cat.color}" onclick="selectTopic('${esc(t.title)}')">&rsaquo; ${esc(t.title)}</button>`;
+          html += `<button class="topic-btn${ta?' active':''}" style="--cat-color:${cat.color}" onclick="selectTopic('${esc(t.title)}')">&rsaquo; ${esc(t.title)}</button>`;
         });
       }
     });
     el.innerHTML = html;
   } else {
-    let html = '';
-    scripts.forEach((s, i) => {
-      const isActive = currentCat === 'script-' + i;
-      html += `<button class="script-btn${isActive ? ' active' : ''}" onclick="selectScript(${i})">${s.icon} ${esc(s.title)}</button>`;
-    });
-    el.innerHTML = html;
+    el.innerHTML = scripts.map((s, i) => {
+      const active = currentCat === 'script-' + i;
+      return `<button class="script-btn${active?' active':''}" onclick="selectScript(${i})">${s.icon} ${esc(s.title)}</button>`;
+    }).join('');
   }
 }
 
+// ── Render main ────────────────────────────────
 function renderMain() {
   const el = document.getElementById('main');
 
-  // Welcome screen
+  // Welcome
   if (!currentCat) {
-    const catCards = categories.map(cat =>
-      `<button class="cat-card" style="--cat-color:${cat.color}" onclick="selectCat('${cat.id}')">
-        <div class="cat-card-icon">${cat.icon}</div>
-        <div class="cat-card-title">${esc(cat.title)}</div>
-        <div class="cat-card-count">${cat.topics.length} Themen</div>
-      </button>`
-    ).join('');
-
     el.innerHTML = `
       <div id="welcome-box">
         <h2>Willkommen im PowerShell Lernportal</h2>
-        <p>Wähle links eine Kategorie aus, um Befehle zu entdecken. Klicke auf einen Befehl, um ihn zu kopieren.
+        <p>Wähle eine Kategorie aus, um Befehle zu entdecken. Tippe auf einen Befehl, um ihn zu kopieren.
         Unter <strong style="color:#ffd166">Scripts</strong> findest du fertige Praxis-Beispiele.</p>
         <div id="terminal-demo">
           <span class="ps-prompt">PS C:\&gt; </span><span class="ps-cmd">Get-Help</span><span class="ps-arg"> * </span><span class="ps-flag">-Category</span><span class="ps-arg"> All</span><span class="blink">▌</span>
         </div>
       </div>
-      <div id="cat-grid">${catCards}</div>`;
+      <div id="cat-grid">${categories.map(cat =>
+        `<button class="cat-card" style="--cat-color:${cat.color}" onclick="selectCat('${cat.id}')">
+          <div class="cat-card-icon">${cat.icon}</div>
+          <div class="cat-card-title">${esc(cat.title)}</div>
+          <div class="cat-card-count">${cat.topics.length} Themen</div>
+        </button>`
+      ).join('')}</div>`;
     return;
   }
 
-  // Script view
+  // Script
   if (currentTab === 'scripts' && currentCat.startsWith('script-')) {
     const idx = parseInt(currentCat.split('-')[1]);
     const s = scripts[idx];
     const btnId = 'script-copy-btn';
     el.innerHTML = `
       <div class="script-header">
-        <span style="font-size:28px">${s.icon}</span>
+        <span style="font-size:26px">${s.icon}</span>
         <h2>${esc(s.title)}</h2>
       </div>
       <div class="script-box">
@@ -569,47 +679,29 @@ function renderMain() {
     return;
   }
 
-  // Category view
+  // Category
   const cat = categories.find(c => c.id === currentCat);
   if (!cat) return;
 
   if (!currentTopic) {
-    const topicCards = cat.topics.map(t =>
-      `<button class="topic-card" style="--cat-color:${cat.color}" onclick="selectTopic('${esc(t.title)}')">
-        <div class="topic-card-title">${esc(t.title)}</div>
-        <div class="topic-card-desc">${esc(t.description)}</div>
-        <div class="topic-card-count">${t.commands.length} Befehle &rarr;</div>
-      </button>`
-    ).join('');
     el.innerHTML = `
       <div class="section-heading">
-        <span style="font-size:26px">${cat.icon}</span>
+        <span style="font-size:24px">${cat.icon}</span>
         <h2 style="color:${cat.color}">${esc(cat.title)}</h2>
       </div>
-      <div id="topic-grid">${topicCards}</div>`;
+      <div id="topic-grid">${cat.topics.map(t =>
+        `<button class="topic-card" style="--cat-color:${cat.color}" onclick="selectTopic('${esc(t.title)}')">
+          <div class="topic-card-title">${esc(t.title)}</div>
+          <div class="topic-card-desc">${esc(t.description)}</div>
+          <div class="topic-card-count">${t.commands.length} Befehle &rarr;</div>
+        </button>`
+      ).join('')}</div>`;
     return;
   }
 
-  // Topic / command view
+  // Commands
   const topic = cat.topics.find(t => t.title === currentTopic);
   if (!topic) return;
-
-  const cmdCards = topic.commands.map((c, i) => {
-    const btnId = `copy-btn-${i}`;
-    return `
-      <div class="cmd-card" style="--cat-color:${cat.color}"
-           onmouseenter="this.style.borderColor='${cat.color}50'"
-           onmouseleave="this.style.borderColor='#1a2e4a'">
-        <div class="cmd-header">
-          <code class="cmd-name">${esc(c.cmd)}</code>
-          <button class="copy-btn" id="${btnId}" onclick="copyText('${esc(c.example).replace(/'/g,"\\'")}','${btnId}')">Kopieren</button>
-        </div>
-        <div class="cmd-body">
-          <div class="cmd-desc">${esc(c.desc)}</div>
-          <code class="cmd-example">${esc(c.example)}</code>
-        </div>
-      </div>`;
-  }).join('');
 
   el.innerHTML = `
     <button class="back-btn" onclick="goBack()">&larr; ${esc(cat.title)}</button>
@@ -617,11 +709,24 @@ function renderMain() {
       <h2 style="color:${cat.color}">${esc(topic.title)}</h2>
     </div>
     <p class="section-desc">${esc(topic.description)}</p>
-    <div class="cmd-list">${cmdCards}</div>
+    <div class="cmd-list">${topic.commands.map((c, i) => {
+      const btnId = `copy-btn-${i}`;
+      return `
+        <div class="cmd-card" style="--cat-color:${cat.color}">
+          <div class="cmd-header">
+            <code class="cmd-name">${esc(c.cmd)}</code>
+            <button class="copy-btn" id="${btnId}" onclick="copyText('${esc(c.example).replace(/'/g,"\\'")}','${btnId}')">Kopieren</button>
+          </div>
+          <div class="cmd-body">
+            <div class="cmd-desc">${esc(c.desc)}</div>
+            <code class="cmd-example">${esc(c.example)}</code>
+          </div>
+        </div>`;
+    }).join('')}</div>
     <div class="tip-box">${esc(topic.tip)}</div>`;
 }
 
-// Initial render
+// Init
 renderSidebar();
 renderMain();
 </script>
